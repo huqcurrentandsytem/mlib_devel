@@ -40,6 +40,7 @@ defaults = { ...
   'arith_type', 'Unsigned', ...
   'bin_pt_in', 31, ...
   'n_bits_out', 32, ...
+  'convert_latency', 1, ...
 };
 
 % Skip init script if mask state has not changed.
@@ -58,6 +59,7 @@ vec_len = get_var('vec_len', 'defaults', defaults, varargin{:});
 arith_type = get_var('arith_type', 'defaults', defaults, varargin{:});
 bin_pt_in = get_var('bin_pt_in', 'defaults', defaults, varargin{:});
 n_bits_out = get_var('n_bits_out', 'defaults', defaults, varargin{:});
+convert_latency = get_var('convert_latency', 'defaults', defaults, varargin{:});
 
 % Validate input fields.
 
@@ -81,13 +83,21 @@ if (n_bits_out > 48),
   return
 end
 
+if (convert_latency < 1),
+  errordlg([blk, ': Convert latency cannot be below 1']);
+  return
+end
+
 % Update sub-block parameters.
 set_param([blk, '/convert'], 'bin_pt_in', num2str(bin_pt_in));
 set_param([blk, '/convert'], 'n_bits_out', num2str(n_bits_out));
 set_param([blk, '/convert'], 'bin_pt_out', num2str( bin_pt_in - (48 - n_bits_out) ));
 set_param([blk, '/convert'], 'quantization', 'Round  (biased: Up)');
 set_param([blk, '/convert'], 'overflow', 'Wrap');
-set_param([blk, '/convert'], 'latency', '2');
+set_param([blk, '/convert'], 'latency', num2str(convert_latency));
+
+set_param([blk, '/delay_valid'], 'latency', num2str(convert_latency - 1));
+set_param([blk, '/delay_carry'], 'latency', num2str(-1 + 2 + convert_latency));
 
 % Save block state to stop repeated init script runs.
 save_state(blk, 'defaults', defaults, varargin{:});
